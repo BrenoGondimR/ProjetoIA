@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Algoritmos de Busca</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Selecione o Algoritmo de Busca</h1>
+        <select id="algorithm" class="select-box">
+            <option value="bfs">Busca em Largura (BFS)</option>
+            <option value="dfs">Busca em Profundidade (DFS)</option>
+            <option value="uniform_cost">Busca de Custo Uniforme</option>
+            <option value="greedy">Busca Gulosa pela Melhor Escolha</option>
+            <option value="iddfs">Busca iterativa em profundidade</option>
+            <option value="astar">A*</option>
+        </select>
+
+        <h1 class="title">Mapa</h1>
+        <div id="map" style="height: 400px;"></div>
+        <button class="btn" onclick="performSearch()" style="width: 100%">Executar Busca</button>
+        <div id="spinner" class="spinner" style="display:none;"></div>
+        <br>
+        <div id="conteudo_caminho">
+            <div id="orderedStreetsContainer" class="ordered-streets-container">
+                <h1 class="title">Ruas Percorridas em Ordem:</h1>
+                <ul id="orderedStreetsList" class="ordered-streets-list"></ul>
+                <div id="memoryInfo" class="memory-info"> <!-- Adicionado esta linha -->
+                    Memória utilizada: <span id="memoryUsed">Calculando...</span> MB
+                </div>
+            </div>
+            <div id="imageContainer" class="image-container">
+                <img id="routeImage" class="route-image" src="" alt="Rota" />
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // Inicializar o mapa
+        var map = L.map('map').setView([-3.71722, -38.5433], 12);  // Exemplo: coordenadas para Fortaleza
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        // Variáveis para guardar os pontos de origem e destino
+        var startPoint = null;
+        var endPoint = null;
+
+        // Adicionar marcadores ao clicar no mapa
+        map.on('click', function(e) {
+            if (startPoint === null) {
+                startPoint = e.latlng;
+                L.marker([e.latlng.lat, e.latlng.lng]).addTo(map).bindPopup('Ponto de Origem').openPopup();
+            } else if (endPoint === null) {
+                endPoint = e.latlng;
+                L.marker([e.latlng.lat, e.latlng.lng]).addTo(map).bindPopup('Ponto de Destino').openPopup();
+            }
+        });
+
+    document.addEventListener("DOMContentLoaded", function() {
+        var scale = 1.5;  // Inicialize com 1.5
+        var imageContainer = document.getElementById("imageContainer");
+        var routeImage = document.getElementById("routeImage");
+
+        // Aplicar o zoom inicial de 1.5 à imagem
+        routeImage.style.transform = `scale(${scale})`;
+
+        imageContainer.addEventListener("wheel", function(event) {
+            event.preventDefault();
+            scale += event.deltaY * -0.01;
+            scale = Math.min(Math.max(1.5, scale), 10);  // Restringe o zoom entre 1.5x e 2x
+
+            routeImage.style.transform = `scale(${scale})`;
+        });
+    });
+    // Função para executar a busca
+    function performSearch() {
+        if (startPoint && endPoint) {
+            var algorithm = document.getElementById("algorithm").value;
+
+            // Mostrar spinner
+            document.getElementById("spinner").style.display = "block";
+            document.getElementById('conteudo_caminho').style.display = "none";
+
+
+            // Chamar a API para executar a busca
+            $.ajax({
+                url: '/search',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    start: startPoint,
+                    end: endPoint,
+                    algorithm: algorithm
+                }),
+                success: function(response) {
+                     // Remover spinner
+                    document.getElementById("spinner").style.display = "none";
+                    document.getElementById('conteudo_caminho').style.display = "flex";
+
+
+                    // Remove qualquer caminho desenhado anteriormente
+                    if (window.routeLayer) {
+                        map.removeLayer(window.routeLayer);
+                    }
+
+                    // Mostrar ruas percorridas em ordem
+                    var orderedStreetsList = document.getElementById('orderedStreetsList');
+                    orderedStreetsList.innerHTML = "";  // Limpar a lista anterior
+
+                    response.ordered_streets.forEach(function(street) {
+                        var listItem = document.createElement('li');
+                        listItem.textContent = street;
+                        orderedStreetsList.appendChild(listItem);
+                    });
+
+                    // Atualize a imagem da rota
+                    document.getElementById('imageContainer').style.display = "flex";
+                    document.getElementById('routeImage').src = response.image_url;
+
+                     // Atualize a informação sobre o uso de memória
+                    document.getElementById("memoryUsed").textContent = response.total_memory_used_MB;
+                },
+                error: function(error) {
+                    console.log(error);
+                     // Remover spinner
+                    document.getElementById("spinner").style.display = "none";
+                    document.getElementById('conteudo_caminho').style.display = "flex";
+
+                }
+            });
+        }
+    }
+
+    </script>
+</body>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+
+    .container {
+        margin: auto;
+        padding: 20px;
+        width: 80%;
+        border-radius: 12px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .title {
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+
+    .select-box {
+        padding: 10px;
+        font-size: 16px;
+        margin-bottom: 20px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .spinner {
+      margin: 30px auto;
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(0, 0, 0, 0.3);
+      border-radius: 50%;
+      border-top-color: #000;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .map {
+        height: 400px;
+        margin-bottom: 20px;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
+
+    .ordered-streets-container {
+        margin-top: 30px;
+        padding: 20px;
+        background-color: #f1f1f1;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .ordered-streets-list {
+        list-style: none;
+        padding-left: 0;
+        font-size: 18px;
+    }
+
+    .ordered-streets-list li {
+        padding: 10px;
+        border-bottom: 1px solid #ccc;
+        transition: background-color 0.3s ease;
+    }
+
+    .ordered-streets-list li:last-child {
+        border-bottom: none;
+    }
+
+    .ordered-streets-list li:hover {
+        background-color: #ddd;
+    }
+
+    .btn:hover {
+        background-color: #0056b3;
+    }
+
+    .route-image {
+        max-width: 100%;
+        margin-top: 20px;
+    }
+
+    .image-container {
+        overflow: hidden;
+        width: 100%; /* ou qualquer tamanho que você queira */
+        display: none;
+    }
+
+    #conteudo_caminho{
+        display: none;
+    }
+
+</style>
+</html>
