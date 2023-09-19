@@ -21,7 +21,7 @@
 
         <h1 class="title">Mapa</h1>
         <div id="map" style="height: 400px;"></div>
-        <button class="btn" onclick="performSearch()" style="width: 100%">Executar Busca</button>
+        <button class="btn" id="searchButton" onclick="performSearch()" style="width: 100%">Executar Busca</button>
         <div id="spinner" class="spinner" style="display:none;"></div>
         <br>
         <div id="conteudo_caminho">
@@ -79,63 +79,65 @@
         });
     });
     // Função para executar a busca
-    function performSearch() {
-        if (startPoint && endPoint) {
-            var algorithm = document.getElementById("algorithm").value;
+function performSearch() {
+    if (startPoint && endPoint) {
+        var algorithm = document.getElementById("algorithm").value;
 
-            // Mostrar spinner
-            document.getElementById("spinner").style.display = "block";
-            document.getElementById('conteudo_caminho').style.display = "none";
+        // Esconde o botão de busca
+        document.getElementById("searchButton").style.display = "none";
 
+        // Mostrar spinner
+        document.getElementById("spinner").style.display = "block";
+        document.getElementById('conteudo_caminho').style.display = "none";
 
-            // Chamar a API para executar a busca
-            $.ajax({
-                url: '/search',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({
-                    start: startPoint,
-                    end: endPoint,
-                    algorithm: algorithm
-                }),
-                success: function(response) {
-                     // Remover spinner
-                    document.getElementById("spinner").style.display = "none";
-                    document.getElementById('conteudo_caminho').style.display = "flex";
+        // Chamar a API para executar a busca
+        $.ajax({
+            url: '/search',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                start: startPoint,
+                end: endPoint,
+                algorithm: algorithm
+            }),
+            success: function(response) {
+                // Remover spinner
+                document.getElementById("spinner").style.display = "none";
+                document.getElementById('conteudo_caminho').style.display = "flex";
 
+                // Mostra o botão de busca novamente
+                document.getElementById("searchButton").style.display = "inline-block";
 
-                    // Remove qualquer caminho desenhado anteriormente
-                    if (window.routeLayer) {
-                        map.removeLayer(window.routeLayer);
-                    }
+                // Mostrar ruas percorridas em ordem
+                var orderedStreetsList = document.getElementById('orderedStreetsList');
+                orderedStreetsList.innerHTML = "";  // Limpar a lista anterior
 
-                    // Mostrar ruas percorridas em ordem
-                    var orderedStreetsList = document.getElementById('orderedStreetsList');
-                    orderedStreetsList.innerHTML = "";  // Limpar a lista anterior
+                response.ordered_streets.forEach(function(street) {
+                    var listItem = document.createElement('li');
+                    listItem.textContent = street;
+                    orderedStreetsList.appendChild(listItem);
+                });
 
-                    response.ordered_streets.forEach(function(street) {
-                        var listItem = document.createElement('li');
-                        listItem.textContent = street;
-                        orderedStreetsList.appendChild(listItem);
-                    });
+                // Atualize a imagem da rota
+                document.getElementById('imageContainer').style.display = "flex";
+                document.getElementById('routeImage').src = response.image_url;
 
-                    // Atualize a imagem da rota
-                    document.getElementById('imageContainer').style.display = "flex";
-                    document.getElementById('routeImage').src = response.image_url;
+                // Atualize a informação sobre o uso de memória
+                document.getElementById("memoryUsed").textContent = response.total_memory_used_MB;
+            },
+            error: function(error) {
+                console.log(error);
+                // Remover spinner
+                document.getElementById("spinner").style.display = "none";
+                document.getElementById('conteudo_caminho').style.display = "flex";
 
-                     // Atualize a informação sobre o uso de memória
-                    document.getElementById("memoryUsed").textContent = response.total_memory_used_MB;
-                },
-                error: function(error) {
-                    console.log(error);
-                     // Remover spinner
-                    document.getElementById("spinner").style.display = "none";
-                    document.getElementById('conteudo_caminho').style.display = "flex";
-
-                }
-            });
-        }
+                // Mostra o botão de busca novamente
+                document.getElementById("searchButton").style.display = "inline-block";
+            }
+        });
     }
+}
+
 
     </script>
 </body>

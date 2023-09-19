@@ -1,10 +1,9 @@
 import heapq
 from flask import Flask, render_template, request, jsonify
 from queue import PriorityQueue
-from networkx import dfs_predecessors
-import networkx as nx
 import osmnx as ox
 import psutil
+import time
 
 app = Flask(__name__)
 
@@ -77,6 +76,8 @@ def search():
     if algorithm == 'bfs':
         before_algo_memory = get_memory_usage()
         print(f"Memória antes de executar BFS: {before_algo_memory} MB")
+        start_time = time.time()
+
         path = ox.distance.shortest_path(G, start_node, end_node, weight='length')
         after_algo_memory = get_memory_usage()
         print(f"Memória depois de executar BFS: {after_algo_memory} MB")
@@ -86,12 +87,23 @@ def search():
         before_algo_memory = get_memory_usage()
         print(f"Memória antes de executar DFS: {before_algo_memory} MB")
 
+        # Inicializa a variável path_found
+        path_found = False
+
         # Inicializa um dicionário de predecessores e uma pilha para DFS
         predecessors = {}
         stack = [(start_node, [start_node])]
+        visited = set()  # Conjunto para rastrear nós visitados
 
         while stack:
             (vertex, path) = stack.pop()
+
+            # Se o nó já foi visitado, pule para a próxima iteração
+            if vertex in visited:
+                continue
+
+            # Marca o nó como visitado
+            visited.add(vertex)
 
             # Se o nó de destino é encontrado, saia do loop
             if vertex == end_node:
@@ -99,7 +111,7 @@ def search():
                 break
 
             for neighbor in G.neighbors(vertex):
-                if neighbor not in set(path):
+                if neighbor not in visited and neighbor not in set(path):
                     new_path = path + [neighbor]
                     stack.append((neighbor, new_path))
                     predecessors[neighbor] = vertex  # Atribua o nó atual como predecessor do vizinho
@@ -113,6 +125,7 @@ def search():
         after_algo_memory = get_memory_usage()
         print(f"Memória depois de executar DFS: {after_algo_memory} MB")
         print(f"Memória usada pelo DFS: {after_algo_memory - before_algo_memory} MB")
+
 
     elif algorithm == 'uniform_cost':
         before_algo_memory = get_memory_usage()
