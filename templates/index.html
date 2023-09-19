@@ -16,7 +16,8 @@
             <option value="greedy">Busca Gulosa pela Melhor Escolha</option>
             <option value="iddfs">Busca iterativa em profundidade</option>
             <option value="astar">A*</option>
-        </select>
+            <option value="memory_bounded_astar">A* iterativa e limitada pela memória</option>
+    </select>
 
         <h1 class="title">Mapa</h1>
         <div id="map" style="height: 400px;"></div>
@@ -147,6 +148,7 @@
 
     .container {
         margin: auto;
+        margin-top: 25px;
         padding: 20px;
         width: 80%;
         border-radius: 12px;
@@ -244,6 +246,26 @@
     #conteudo_caminho{
         display: none;
     }
+
+    .select-box {
+        /* Removendo o estilo padrão */
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+
+        /* Adicionando estilos personalizados */
+        background-color: #fff;
+        border: 2px solid #ccc;
+        border-radius: 5px;
+        padding: 12px 20px;
+        font-size: 16px;
+        width: 100%;
+        margin-bottom: 20px;
+        box-sizing: border-box;
+
+    }
+
+
 
 </style>
 </html>

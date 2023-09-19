@@ -17,6 +17,42 @@ def get_memory_usage():
     process = psutil.Process()
     return process.memory_info().rss / 1024 / 1024  # Memória em MB
 
+def memory_bounded_astar(G, start_node, end_node, memory_limit_MB):
+    came_from = {}
+    g_score = {node: float('inf') for node in G.nodes}
+    g_score[start_node] = 0
+    f_score = {node: float('inf') for node in G.nodes}
+    f_score[start_node] = ox.distance.euclidean_dist_vec(G.nodes[start_node]['y'], G.nodes[start_node]['x'],
+                                                         G.nodes[end_node]['y'], G.nodes[end_node]['x'])
+    open_set = [(f_score[start_node], start_node)]
+
+    while open_set:
+        # Verificar se estamos atingindo o limite de memória
+        current_memory = get_memory_usage()
+        if current_memory > memory_limit_MB:
+            print("Limite de memória atingido. Interrompendo o algoritmo.")
+            return []
+
+        current = heapq.heappop(open_set)[1]
+        if current == end_node:
+            path = []
+            while current in came_from:
+                path.insert(0, current)
+                current = came_from[current]
+            path.insert(0, start_node)
+            return path
+
+        for neighbor in G.neighbors(current):
+            tentative_g_score = g_score[current] + G[current][neighbor][0].get('length', 1)
+            if tentative_g_score < g_score[neighbor]:
+                came_from[neighbor] = current
+                g_score[neighbor] = tentative_g_score
+                f_score[neighbor] = g_score[neighbor] + ox.distance.euclidean_dist_vec(G.nodes[neighbor]['y'],
+                                                                                       G.nodes[neighbor]['x'],
+                                                                                       G.nodes[end_node]['y'],
+                                                                                       G.nodes[end_node]['x'])
+                heapq.heappush(open_set, (f_score[neighbor], neighbor))
+
 @app.route('/search', methods=['POST'])
 def search():
     data = request.json
@@ -181,6 +217,14 @@ def search():
 
         after_algo_memory = get_memory_usage()
         print(f"Memória depois de executar A*: {after_algo_memory} MB")
+
+    elif algorithm == 'memory_bounded_astar':
+        before_algo_memory = get_memory_usage()
+        print(f"Memória antes de executar A* Iterativo e Limitado pela Memória: {before_algo_memory} MB")
+        memory_limit_MB = 900  # Defina o limite de memória em MB
+        path = memory_bounded_astar(G, start_node, end_node, memory_limit_MB)
+        after_algo_memory = get_memory_usage()
+        print(f"Memória depois de executar A* Iterativo e Limitado pela Memória: {after_algo_memory} MB")
 
     total_memory_used = after_algo_memory - before_algo_memory
     path_info = []
